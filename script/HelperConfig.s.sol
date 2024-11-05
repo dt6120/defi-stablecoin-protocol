@@ -17,8 +17,8 @@ contract HelperConfig is Script {
     }
 
     uint8 public constant DECIMALS = 8;
-    int256 public constant ETH_USD_PRICE = 3200;
-    int256 public constant BTC_USD_PRICE = 71000;
+    int256 public constant MOCK_ETH_USD_PRICE = 3200;
+    int256 public constant MOCK_BTC_USD_PRICE = 71000;
 
     uint256 public constant SEPOLIA_CHAIN_ID = 11155111;
     uint256 public constant AMOY_CHAIN_ID = 80002;
@@ -53,8 +53,8 @@ contract HelperConfig is Script {
 
         vm.broadcast();
         NetworkConfig memory config = NetworkConfig({
-            wethUsdPriceFeed: address(new MockV3Aggregator(DECIMALS, ETH_USD_PRICE)),
-            wbtcUsdPriceFeed: address(new MockV3Aggregator(DECIMALS, BTC_USD_PRICE)),
+            wethUsdPriceFeed: address(new MockV3Aggregator(DECIMALS, MOCK_ETH_USD_PRICE)),
+            wbtcUsdPriceFeed: address(new MockV3Aggregator(DECIMALS, MOCK_BTC_USD_PRICE)),
             weth: address(new ERC20Mock()),
             wbtc: address(new ERC20Mock()),
             deployerKey: DEFAULT_ANVIL_KEY
