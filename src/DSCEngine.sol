@@ -33,8 +33,6 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
 
     DecentralizedStablecoin private immutable i_dsc;
 
-    event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
-
     modifier revertOnZeroAmount(uint256 amount) {
         if (amount == 0) {
             revert DSCEngine__ZeroAmountNotAllowed();
@@ -62,12 +60,17 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
         i_dsc = DecentralizedStablecoin(dscAddress);
     }
 
+    function depositCollateralAndMintDsc(address token, uint256 collateralAmount, uint256 mintAmount) external {
+        depositCollateral(token, collateralAmount);
+        mintDsc(mintAmount);
+    }
+
     /**
      * @param token The address of token to deposit as collateral
      * @param amount The amount of token to deposit as collateral
      */
     function depositCollateral(address token, uint256 amount)
-        external
+        public
         revertOnZeroAmount(amount)
         revertOnInvalidCollateralToken(token)
         // check if modifier is actually required
@@ -86,7 +89,7 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
      * @param amount The amount of DSC token to mint
      */
     function mintDsc(uint256 amount)
-        external
+        public
         revertOnZeroAmount(amount)
         // check if actually required
         nonReentrant
@@ -124,7 +127,7 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
         uint256 adjustedTotalCollateralUsdValue =
             totalCollateralUsdValue * LIQUIDATION_THRESHOLD / LIQUIDATION_PRECISION;
 
-        healthFactor = adjustedTotalCollateralUsdValue / totalDscMinted;
+        healthFactor = totalDscMinted == 0 ? MIN_HEALTH_FACTOR : adjustedTotalCollateralUsdValue / totalDscMinted;
     }
 
     /**
@@ -133,7 +136,7 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
     function _revertIfHealthFactorIsBroken(address user) internal view {
         uint256 healthFactor = _healthFactor(user);
         if (healthFactor < MIN_HEALTH_FACTOR) {
-            revert DSCEngine__HealthFactorThresholdBreached(healthFactor);
+            revert DSCEngine__HealthFactorBreached(healthFactor);
         }
     }
 
@@ -163,5 +166,97 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
         address priceFeed = s_tokenToPriceFeed[token];
         (, int256 unitUsdPrice,,,) = AggregatorV3Interface(priceFeed).latestRoundData();
         usdValue = ((uint256(unitUsdPrice) * ADDITIONAL_PRICE_FEED_PRECISION) * amount) / PRECISION;
+    }
+
+    /**
+     * @dev This constant is used to adjust the precision of price feeds.
+     * @return The precision factor for price feeds (1e10).
+     */
+    function getAdditionalPriceFeedPrecision() external pure returns (uint256) {
+        return ADDITIONAL_PRICE_FEED_PRECISION;
+    }
+
+    /**
+     * @dev This constant is commonly used for scaling token amounts or calculations requiring high precision.
+     * @return The general precision factor for collateral USD values (1e18).
+     */
+    function getPrecision() external pure returns (uint256) {
+        return PRECISION;
+    }
+
+    /**
+     * @dev This constant represents the percentage used to derive the adjusted collateral value.
+     * @return The liquidation threshold percentage (50).
+     */
+    function getLiquidationThreshold() external pure returns (uint256) {
+        return LIQUIDATION_THRESHOLD;
+    }
+
+    /**
+     * @dev This constant helps ensure the correct precision when computing liquidation-related values.
+     * @return The liquidation precision factor (100).
+     */
+    function getLiquidationPrecision() external pure returns (uint256) {
+        return LIQUIDATION_PRECISION;
+    }
+
+    /**
+     * @dev A position with a health factor below this value is considered under-collateralized and at risk of liquidation.
+     * @return The minimum health factor (1).
+     */
+    function getMinHealthFactor() external pure returns (uint256) {
+        return MIN_HEALTH_FACTOR;
+    }
+
+    /**
+     * @dev Returns the price feed address for a specific token.
+     * @param token The address of the token.
+     * @return The price feed address associated with the token.
+     */
+    function getPriceFeed(address token) external view returns (address) {
+        return s_tokenToPriceFeed[token];
+    }
+
+    /**
+     * @dev Returns the collateral deposit amount for a specific user and token.
+     * @param user The address of the user.
+     * @param token The address of the token.
+     * @return The collateral deposit amount for the user and token.
+     */
+    function getUserCollateralDepositAmount(address user, address token) external view returns (uint256) {
+        return s_userCollateralDepositAmount[user][token];
+    }
+
+    /**
+     * @dev Returns the total amount of DSC minted by a specific user.
+     * @param user The address of the user.
+     * @return The total amount of DSC minted by the user.
+     */
+    function getDscMinted(address user) external view returns (uint256) {
+        return s_dscMinted[user];
+    }
+
+    /**
+     * @dev Returns the list of all collateral tokens.
+     * @return An array of addresses representing all collateral tokens.
+     */
+    function getCollateralTokens() external view returns (address[] memory) {
+        return s_collateralTokens;
+    }
+
+    /**
+     * @dev The maximum mintable DSC is determined by the user's total collateral value (adjusted by the liquidation threshold)
+     *      minus the amount of DSC they have already minted.
+     *      If the total collateral value is less than or equal to the DSC already minted, no more DSC can be minted.
+     * @param user The address of the user for whom the maximum mintable DSC is being calculated.
+     * @return maxMintAmount The maximum amount of DSC that the user can mint.
+     */
+    function getMaxMintableDsc(address user) external view returns (uint256 maxMintAmount) {
+        (uint256 totalDscMinted, uint256 totalCollateralUsdValue) = _getUserInfo(user);
+        uint256 adjustedTotalCollateralUsdValue =
+            totalCollateralUsdValue * LIQUIDATION_THRESHOLD / LIQUIDATION_PRECISION;
+
+        maxMintAmount =
+            adjustedTotalCollateralUsdValue <= totalDscMinted ? 0 : adjustedTotalCollateralUsdValue - totalDscMinted - 1;
     }
 }
