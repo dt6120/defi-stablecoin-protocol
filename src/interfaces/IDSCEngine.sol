@@ -8,19 +8,23 @@ interface IDSCEngine {
     error DSCEngine__TransferFailed();
     error DSCEngine__MintFailed();
     error DSCEngine__HealthFactorBreached(uint256 healthFactor);
+    error DSCEngine__HealthFactorNotBreached(uint256 healthFactor);
+    error DSCEngine__HealthFactorNotImproved(uint256 startingHealthFactor, uint256 endingHealthFactor);
 
     event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
+    event CollateralRedeemed(address indexed from, address indexed to, address indexed token, uint256 amount);
 
     function depositCollateral(address token, uint256 amount) external;
     function depositCollateralAndMintDsc(address token, uint256 collateralAmount, uint256 mintAmount) external;
-    // function redeemCollateralForDsc() external;
-    // function redeemCollateral() external;
+    function redeemCollateralForDsc(address token, uint256 collateralAmount, uint256 dscAmount) external;
+    function redeemCollateral(address token, uint256 amount) external;
     function mintDsc(uint256 amount) external;
-    // function burnDsc() external;
-    // function liquidate() external;
-    // function getHealthFactor() external view;
+    function burnDsc(uint256 amount) external;
+    function liquidate(address user, address token, uint256 amount) external;
+    function getHealthFactor(address user) external view returns (uint256);
     function getUserTotalCollateralUsdValue(address user) external view returns (uint256);
     function getUsdValue(address token, uint256 amount) external view returns (uint256);
+    function getTokenAmountFromUsdValue(address token, uint256 amount) external view returns (uint256);
     function getLiquidationThreshold() external pure returns (uint256);
     function getAdditionalPriceFeedPrecision() external pure returns (uint256);
     function getPrecision() external pure returns (uint256);
@@ -31,4 +35,10 @@ interface IDSCEngine {
     function getDscMinted(address user) external view returns (uint256);
     function getCollateralTokens() external view returns (address[] memory);
     function getMaxMintableDsc(address user) external view returns (uint256);
+    function getUserInfo(address user) external view returns (uint256, uint256);
+    function getAdjustedCollateralUsdValue(address token, uint256 amount) external view returns (uint256);
+    function calculateHealthFactor(uint256 totalDscMinted, uint256 totalCollateralUsdValue)
+        external
+        pure
+        returns (uint256);
 }
