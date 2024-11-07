@@ -17,8 +17,8 @@ contract HelperConfig is Script {
     }
 
     uint8 public constant DECIMALS = 8;
-    int256 public constant MOCK_ETH_USD_PRICE = 3200;
-    int256 public constant MOCK_BTC_USD_PRICE = 71000;
+    int256 public constant MOCK_ETH_USD_PRICE = 3200e8;
+    int256 public constant MOCK_BTC_USD_PRICE = 71000e8;
 
     uint256 public constant SEPOLIA_CHAIN_ID = 11155111;
     uint256 public constant AMOY_CHAIN_ID = 80002;
