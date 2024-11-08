@@ -32,6 +32,7 @@ interface IDSCEngine {
     function getMinHealthFactor() external pure returns (uint256);
     function getPriceFeed(address token) external view returns (address);
     function getUserCollateralDepositAmount(address user, address token) external view returns (uint256);
+    function getAdjustedUsdValue(uint256 amount) external pure returns (uint256);
     function getDscMinted(address user) external view returns (uint256);
     function getCollateralTokens() external view returns (address[] memory);
     function getMaxMintableDsc(address user) external view returns (uint256);

@@ -7,6 +7,7 @@ import {AggregatorV3Interface} from "@chainlink/contracts/shared/interfaces/Aggr
 
 import {IDSCEngine} from "./interfaces/IDSCEngine.sol";
 import {DecentralizedStablecoin} from "./DecentralizedStablecoin.sol";
+import {OracleLib} from "./libraries/OracleLib.sol";
 
 /**
  * @title DSCEngine
@@ -19,6 +20,8 @@ import {DecentralizedStablecoin} from "./DecentralizedStablecoin.sol";
  *
  */
 contract DSCEngine is IDSCEngine, ReentrancyGuard {
+    using OracleLib for AggregatorV3Interface;
+
     uint256 private constant ADDITIONAL_PRICE_FEED_PRECISION = 1e10;
     uint256 private constant PRECISION = 1e18;
     uint256 private constant LIQUIDATION_THRESHOLD = 50;
@@ -251,13 +254,13 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
      */
     function getUsdValue(address token, uint256 amount) public view returns (uint256 usdValue) {
         address priceFeed = s_tokenToPriceFeed[token];
-        (, int256 unitUsdPrice,,,) = AggregatorV3Interface(priceFeed).latestRoundData();
+        (, int256 unitUsdPrice,,,) = AggregatorV3Interface(priceFeed).staleCheckLatestRoundData();
         usdValue = ((uint256(unitUsdPrice) * ADDITIONAL_PRICE_FEED_PRECISION) * amount) / PRECISION;
     }
 
     function getTokenAmountFromUsdValue(address token, uint256 amount) public view returns (uint256 tokenAmount) {
         address priceFeed = s_tokenToPriceFeed[token];
-        (, int256 unitUsdPrice,,,) = AggregatorV3Interface(priceFeed).latestRoundData();
+        (, int256 unitUsdPrice,,,) = AggregatorV3Interface(priceFeed).staleCheckLatestRoundData();
         tokenAmount = amount * PRECISION / (uint256(unitUsdPrice) * ADDITIONAL_PRICE_FEED_PRECISION);
     }
 
@@ -372,6 +375,10 @@ contract DSCEngine is IDSCEngine, ReentrancyGuard {
     {
         uint256 collateralUsdValue = getUsdValue(token, amount);
         adjustedCollateralUsdValue = collateralUsdValue * LIQUIDATION_THRESHOLD / LIQUIDATION_PRECISION;
+    }
+
+    function getAdjustedUsdValue(uint256 amount) external pure returns (uint256 adjustedUsdValue) {
+        adjustedUsdValue = amount * LIQUIDATION_THRESHOLD / LIQUIDATION_PRECISION;
     }
 
     function calculateHealthFactor(uint256 totalDscMinted, uint256 totalCollateralUsdValue)
